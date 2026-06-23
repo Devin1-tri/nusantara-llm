@@ -1,0 +1,18 @@
+# Nusantara LLM
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.safetensors
+*.bin
+*.pt
+checkpoints/
+data/processed/
+data/tokenized/
+models/
+.DS_Store
+.wandb/
+wandb/
+*.log
+.env

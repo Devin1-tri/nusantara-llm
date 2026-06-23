@@ -1,0 +1,112 @@
+# Nusantara LLM Training Configuration
+# Optimized for NVIDIA H200 (141 GB HBM3e)
+
+model:
+  base_model: "meta-llama/Llama-3.1-70B"
+  model_dtype: "bfloat16"
+  attn_implementation: "flash_attention_2"
+  use_cache: false
+  max_length: 32768
+  rope_scaling: null  # Will be set if needed
+
+# Dataset
+data:
+  train_file: "./data/processed/train"
+  val_file: "./data/processed/val"
+  test_file: "./data/processed/test"
+  streaming: false
+  preprocessing_num_workers: 16
+  shuffle_buffer: 10000
+  pack_sequences: true  # Pack short sequences for efficiency
+
+# Training
+training:
+  output_dir: "./checkpoints"
+  overwrite_output_dir: true
+  num_train_epochs: 1
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16  # Effective batch: 2 × 16 = 32
+  max_steps: 10000
+  save_steps: 500
+  eval_steps: 500
+  logging_steps: 10
+  save_total_limit: 5
+  eval_strategy: "steps"
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+
+# Optimization
+optimizer:
+  name: "adamw_torch"
+  learning_rate: 1.0e-5
+  weight_decay: 0.1
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_epsilon: 1.0e-8
+  max_grad_norm: 1.0
+
+# LR Schedule
+lr_scheduler:
+  type: "cosine"
+  warmup_steps: 200
+  warmup_ratio: null
+
+# Precision
+precision:
+  bf16: true
+  fp16: false
+  tf32: true
+
+# FSDP / DeepSpeed
+distributed:
+  framework: "fsdp"  # Use FSDP for single-node multi-GPU
+  fsdp_config:
+    sharding_strategy: "FULL_SHARD"
+    cpu_offload: false
+    backward_prefetch: "BACKWARD_PRE"
+    forward_prefetch: false
+    activation_checkpointing: true
+    activation_cpu_offload: false
+    limit_all_gathers: true
+    use_orig_params: true
+    sync_module_states: true  # Sync from rank 0 on startup
+  deepspeed_config:
+    zero_optimization:
+      stage: 3
+      offload_optimizer:
+        device: "cpu"  # Offload optimizer states to CPU
+        pin_memory: true
+      offload_param: null
+      allgather_partitions: true
+      allgather_bucket_size: 2e8
+      reduce_scatter: true
+      reduce_bucket_size: 2e8
+      overlap_comm: true
+      contiguous_gradients: true
+
+# DataLoader
+dataloader:
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+  group_by_length: true  # Group similar lengths for efficiency
+  length_column_name: "length"
+
+# Logging & Reporting
+logging:
+  report_to: ["wandb", "tensorboard"]
+  run_name: "nusantara-llm-70b-v1"
+  log_level: "info"
+
+# Resumption
+resume:
+  resume_from_checkpoint: null  # Set to checkpoint path to resume
+  ignore_data_skip: false
+
+# HF Hub
+hub:
+  push_to_hub: true
+  hub_model_id: "nusantara-llm/Llama-3.1-70B-Nusantara-v1"
+  hub_private_repo: false
+  hub_strategy: "every_save"
